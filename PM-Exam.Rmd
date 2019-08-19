@@ -1,0 +1,1005 @@
+---
+title: "STA380 Take Home Exam"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(MASS)
+library(ggplot2)
+library(corrplot)
+```
+#Chapter 2, Number 10
+
+##a)
+
+```{r}
+nrow(Boston)
+ncol(Boston)
+```
+Each of the 506 rows represents one of the tracts in the 1970 census of Boston. Each column represents a measured variable.
+
+By running the command "?Boston" the following column descriptions can be found:
+
+This data frame contains the following columns:
+
+crim: per capita crime rate by town.\newline
+zn: proportion of residential land zoned for lots over 25,000 sq.ft.\newline
+indus: proportion of non-retail business acres per town.\newline
+chas:Charles River dummy variable (= 1 if tract bounds river; 0 otherwise).\newline
+nox: nitrogen oxides concentration (parts per 10 million).\newline
+rm: average number of rooms per dwelling.\newline
+age: proportion of owner-occupied units built prior to 1940.\newline
+dis: weighted mean of distances to five Boston employment centres.\newline
+rad: index of accessibility to radial highways.\newline
+tax: full-value property-tax rate per \$10,000.\newline
+ptratio: pupil-teacher ratio by town.\newline
+black: 1000(Bk - 0.63)^2 where Bk is the proportion of blacks by town.\newline
+lstat: lower status of the population (percent).\newline
+medv: median value of owner-occupied homes in \$1000s\newline
+
+##b)
+
+I plotted several different predictors for crim and lstat that I expected to find trends within. As expected, comparing a predictor's effect on these had similiar shapes. 
+
+```{r}
+plot(Boston$nox, Boston$crim)
+plot(Boston$nox, Boston$lstat)
+plot(Boston$rm, Boston$crim)
+plot(Boston$rm, Boston$lstat)
+plot(Boston$dis, Boston$crim)
+plot(Boston$dis, Boston$lstat)
+plot(Boston$black, Boston$crim)
+plot(Boston$black, Boston$lstat)
+plot(Boston$medv, Boston$crim)
+plot(Boston$medv, Boston$lstat)
+plot(Boston$age, Boston$crim)
+plot(Boston$age, Boston$lstat)
+plot(Boston$lstat, Boston$crim)
+
+```
+
+
+
+##c)
+
+
+```{r}
+Boston$chas <- as.factor(Boston$chas)
+
+M <- cor(Boston[-4])
+
+col <- colorRampPalette(c("#BB4444", "#EE9988", "#FFFFFF", "#77AADD", "#4477AA"))
+corrplot(M, method = "color", col = col(200),
+         type = "upper", order = "hclust", number.cex = .7,
+         addCoef.col = "black", # Add coefficient of correlation
+         tl.col = "black", tl.srt = 90, # Text label color and rotation
+         # Combine with significance
+         sig.level = 0.01, insig = "blank", 
+         # hide correlation coefficient on the principal diagonal
+         diag = FALSE)
+```
+
+It appears that several variables included have a (relatively) high correlation with the per capita crime rate.
+
+##d)
+
+```{r}
+hist(Boston$crim, breaks = 100)
+hist(Boston$tax, breaks = 100)
+hist(Boston$ptratio, breaks = 100)
+```
+
+```{r}
+nrow(Boston[Boston$crim < 10 , ])
+```
+It appears that the majority of the census tracts have a low crime per capita.
+
+```{r}
+nrow(Boston[Boston$tax > 700,])
+nrow(Boston[Boston$tax > 650,])
+```
+
+While most of the variable tax appears aomewhat normally distributed for lower values, there are 137 tracts at a significantly higher level.A similiar spike of ptratio happens around 20.
+
+ 
+##e)
+
+```{r}
+nrow(Boston[Boston$chas == 1, ])
+```
+
+35 suburbs in the data set cound the Charles River
+
+##f)
+
+```{r}
+median(Boston$ptratio)
+```
+
+The median n pupil-teacher ratio is 19.05
+
+##g)
+
+```{r}
+Boston[min(Boston$medv), ]
+```
+
+It appears that the most notable feature of this particuliar suburb is that it is near the bottom range of the tax variable (understanble considering that these are both metrics for home value)
+
+
+##h)
+
+```{r}
+head(Boston[Boston$rm > 7, ])
+head(Boston[Boston$rm > 8, ])
+```
+
+64 suburbs average more than seven rooms per dwelling and 13 suburbs average more than eight rooms per dwelling. For suburbs averagign more than eight rooms per dwelling, it appears that age is significantly higher than average
+
+#Chapter 3, Question 15
+
+##a)
+
+
+```{r}
+removeCrim = Boston[, names(Boston) != "crim"]
+
+for (i in seq_along(removeCrim)){
+  assign(paste(names(removeCrim)[i], "Regression", sep=""), lm(crim ~ as.matrix(removeCrim[i]), data = Boston))
+  print(names(removeCrim)[i])
+  print(summary(get(paste(names(removeCrim)[i], "Regression", sep=""))))
+}
+
+```
+
+
+Each predictor except chas is significant at the alpha = .05 significance level. Below are plots for each regression:
+
+```{r}
+for (i in seq_along(Boston[-ncol(Boston)])){
+  plot(Boston$crim ~ as.matrix(removeCrim[i]), xlab=names(removeCrim)[i])
+  abline(lm(crim ~ as.matrix(removeCrim[i]), data = Boston), col="red", lwd = 2)
+}
+
+  
+```
+
+
+##b)
+
+At the alapha = .05 level, We reject the null hypothesis for "zn", "dis", "rad", "black" and "medv".
+
+```{r}
+allVar = lm(crim ~ ., data = Boston)
+summary(allVar)
+```
+
+
+
+##c)
+
+
+
+```{r}
+linReg <- vector("numeric", 0)
+
+for (i in seq_along(Boston[-ncol(Boston)])){
+  linReg <- c(linReg, get(paste(names(removeCrim)[i], "Regression", sep=""))$coefficient[2])
+  
+}
+
+```
+
+
+```{r}
+multReg <- c(allVar$coefficients[-1])
+```
+
+```{r}
+combined = cbind(linReg, multReg)
+
+
+plot(linReg, multReg, xlab = "Coefficient in Single Regression", ylab = "Coefficient in Multiple Regression", col = 'blue')
+```
+
+While there is a expected small variation amonst most of the coefficients between each single regression and the corresponding coefficient in the multiple regression, the variable "nox" has a much more significant difference, suggesting that its significance as a singular predictor is likely due to correlation with another relevant predictor that is mitigated in the case of multiple regression.
+
+
+##d)
+
+It appears that cubic models fit "indus", "nox", "age", "dis", "ptratio" and "medv" as  a predictor
+
+
+```{r}
+removeChas = removeCrim[, names(removeCrim) != "chas"]
+
+for (i in seq_along(removeChas)){
+  print(names(removeChas)[i])
+  print(summary(lm(crim ~ poly(as.matrix(removeChas[i]), 3), data = Boston)))
+}
+```
+
+
+#Chapter 6, Number 9
+
+##a)
+```{r}
+library(ISLR)
+train = sample(1:dim(College)[1], dim(College)[1]/2)
+test <- -train
+trainData <- College[train, ]
+testData <- College[test, ]
+```
+
+##b)
+```{r}
+trainRegression = lm(Apps ~ ., data = trainData)
+testPredictions = predict(trainRegression, testData)
+cat("Least Squares Test MSE =", mean((testPredictions - testData$Apps)^2))
+```
+
+##c)
+
+```{r}
+library(glmnet)
+trainMatrix <- model.matrix(Apps ~ ., data = trainData)
+testMatrix <- model.matrix(Apps ~ ., data = testData)
+grid <- 10 ^ seq(4, -2, length = 100)
+ridgeRegression <- glmnet(trainMatrix, trainData$Apps, alpha = 0, lambda = grid, thresh = 1e-12)
+ridgeCV <- cv.glmnet(trainMatrix, trainData$Apps, alpha = 0, lambda = grid, thresh = 1e-12)
+ridgeLambdaMin = ridgeCV$lambda.min
+ridgeTestPredictions = predict(ridgeRegression, s = ridgeLambdaMin, newx = testMatrix)
+cat("Ridge Test MSE = ", mean((ridgeTestPredictions - testData$Apps)^2))
+```
+
+##d)
+
+```{r}
+lasso <- glmnet(trainMatrix, trainData$Apps, alpha = 1, lambda = grid, thresh = 1e-12)
+lassoCV <- cv.glmnet(trainMatrix, trainData$Apps, alpha = 1, lambda = grid, thresh = 1e-12)
+lassoLambdaMin <- lassoCV$lambda.min
+lassoTestPredictions <- predict(lasso, s = lassoLambdaMin, newx = testMatrix)
+cat("Lasso Test MSE = ", mean((lassoTestPredictions - testData$Apps)^2), "\n\n")
+predict(lasso, s = lassoLambdaMin, type = "coefficients")
+```
+
+Note that the above listing of coefficients appears to be very dependant upon the training and test set selection, indicating that these may not be extremely reliable results.
+
+##e)
+
+
+```{r}
+library(pls)
+PCR <- pcr(Apps ~ ., data = trainData, scale = TRUE, validation = "CV")
+validationplot(PCR, val.type = "MSEP")
+
+for (i in 1:17){
+  assign(paste("pcrPrediction", i, sep = ""), predict(PCR, testData, ncomp = i))
+  cat("PCR Test MSE for", i, "predictors =", mean((get(paste("pcrPrediction", i, sep = "")) - testData$Apps)^2), "\n")
+}
+```
+
+
+##f)
+
+
+
+```{r}
+
+PLS <- plsr(Apps ~ ., data = trainData, scale = TRUE, validation = "CV")
+validationplot(PLS, val.type = "MSEP")
+
+for (i in 1:17){
+  assign(paste("plsPrediction", i, sep = ""), predict(PLS, testData, ncomp = i))
+  cat("PLS Test MSE for", i, "predictors =", mean((get(paste("plsPrediction", i, sep = "")) - testData$Apps)^2), "\n")
+}
+```
+
+
+
+##g)
+
+```{r}
+testMean = mean(testData$Apps)
+testSStot = mean((testMean - testData$Apps)^2)
+
+linearR2 <- 1 - mean((testPredictions - testData$Apps)^2) / testSStot
+ridgeR2 <- 1 - mean((ridgeTestPredictions - testData$Apps)^2) / testSStot
+lassoR2 <- 1 - mean((lassoTestPredictions - testData$Apps)^2) / testSStot
+
+cat("Linear R^2 =", linearR2, "\n")
+cat("Ridge R^2 =", ridgeR2, "\n")
+cat("Lasso R^2 =", lassoR2, "\n\n")
+
+for (i in 1:17){
+  cat("PCR R^2 for", i, "predictors =", 1 - mean((get(paste("pcrPrediction", i, sep = "")) - testData$Apps)^2) / testSStot, "\n")
+}
+
+cat("\n")
+
+for (i in 1:17){
+  cat("PLS R^2 for", i, "predictors =", 1 - mean((get(paste("plsPrediction", i, sep = "")) - testData$Apps)^2) / testSStot, "\n")
+}
+```
+
+Each of the models seems to predict college applications with a reasonably high R^2 value, with the exception of some PCR models with a low number of predictors.
+
+#Chapter 6, Number 11
+
+##a)
+
+```{r}
+library(MASS)
+library(glmnet)
+library(pls)
+
+predictors <- model.matrix(crim ~., Boston)[,-1]
+response <- Boston$crim
+
+cvLASSO <- cv.glmnet(predictors, response, alpha = 1, type.measure = 'mse')
+cvRidge <- cv.glmnet(predictors, response, alpha = 0, type.measure = 'mse')
+pcrBoston <- pcr(crim ~ ., data = Boston, scale = TRUE, validation = "CV")
+
+plot(cvLASSO)
+plot(cvRidge)
+validationplot(pcrBoston, val.type = 'MSEP')
+
+LASSOmse <- cvLASSO$cvm[cvLASSO$lambda == cvLASSO$lambda.min]
+RidgeMse <- cvRidge$cvm[cvRidge$lambda == cvRidge$lambda.min]
+
+cat('LASSO MSE =', LASSOmse, '\n')
+cat('Ridge MSE =', RidgeMse, '\n\n')
+
+for (i in seq_along(pcrBoston$validation$adj)){
+  cat('Test MSE of', pcrBoston$validation$adj[i], 'for', i, 'predictors\n')
+}
+```
+
+Each of the LASSO, Ridge, and PCR provide models with similiar MSE. The PCR model with all predictors appears to have the lowest MSE, though there is certainly a trade off of potential bias and lack of ability to interpret coefficients.
+
+
+#Chapter 4, Number 10
+
+##a)
+
+
+```{r}
+cor(Weekly[, -9])
+```
+
+The only readily apparent trends are between the "year" and volume variables.
+
+```{r}
+attach(Weekly)
+for (variable in Weekly){
+  plot(variable)
+}
+```
+
+
+
+##b)
+
+Lag2 is statistically significant at alpha = .05
+
+```{r}
+logisticReg <- glm(Direction ~ Lag1 + Lag2 + Lag3 + Lag4 + Lag5 + Volume, data = Weekly, family = binomial)
+summary(logisticReg)
+```
+
+
+
+
+##c)
+
+```{r}
+logisticPrediction = predict(logisticReg, type = "response")
+
+catPrediction <- rep("", length(logisticPrediction))
+catPrediction[logisticPrediction > 0.5] <- "Up"
+catPrediction[logisticPrediction < 0.5] <- "Down"
+
+cmTable <- table(catPrediction, Direction)
+cmTable
+```
+
+Interpretation:
+
+```{r}
+cat("Proportion of correct predictions:", (cmTable[,'Down']['Down']+cmTable[,'Up']['Up'])/sum(cmTable))
+cat("\nProportion of correct predictions while market is increasing:", cmTable[,'Up']['Up']/(sum(cmTable[,'Up'])))
+cat("\nProportion of correct predictions while market is decreasing:", cmTable[,'Down']['Down']/(sum(cmTable[,'Down'])))
+```
+
+##d)
+
+```{r}
+train <- (Year <= 2008)
+Data0910 <- Weekly[!train,]
+Direction0910 <- Direction[!train]
+logisticRegTrain <- glm(Direction ~ Lag2, data = Weekly, family = binomial, subset = train)
+summary(logisticRegTrain)
+```
+
+```{r}
+logisticPrediction2 <- predict(logisticRegTrain, Data0910, type = "response")
+
+catPrediction2 <- rep("", length(logisticPrediction2))
+catPrediction2[logisticPrediction2 > 0.5] <- "Up"
+catPrediction2[logisticPrediction2 < 0.5] <- "Down"
+
+cmTable2 <- table(catPrediction2, Direction0910)
+cmTable2
+```
+
+Interpretation:
+
+```{r}
+cat("Proportion of correct predictions:", (cmTable2[,'Down']['Down']+cmTable2[,'Up']['Up'])/sum(cmTable2))
+cat("\nProportion of correct predictions while market is increasing:", cmTable2[,'Up']['Up']/(sum(cmTable2[,'Up'])))
+cat("\nProportion of correct predictions while market is decreasing:", cmTable2[,'Down']['Down']/(sum(cmTable2[,'Down'])))
+```
+
+##g)
+
+```{r}
+library(class)
+trainKNN <- as.matrix(Lag2[train])
+testKNN <- as.matrix(Lag2[!train])
+trainKKNDirection <- Direction[train]
+set.seed(1)
+knnPrediction <- knn(trainKNN, testKNN, trainKKNDirection, k = 1)
+knnTable <- table(knnPrediction, Direction0910)
+knnTable
+```
+
+Interpretation:
+
+```{r}
+cat("Proportion of correct predictions:", (knnTable[,'Down']['Down']+knnTable[,'Up']['Up'])/sum(knnTable))
+cat("\nProportion of correct predictions while market is increasing:", knnTable[,'Up']['Up']/(sum(knnTable[,'Up'])))
+cat("\nProportion of correct predictions while market is decreasing:", knnTable[,'Down']['Down']/(sum(knnTable[,'Down'])))
+```
+
+##h) 
+
+In just comparing the logisitc and K-nn regression (k=1), it appears that the logisitc regression has a lower error rate for the given training (1990-2008) and test (2009-2010) that are given. 
+
+##i)
+
+```{r}
+for (i in c(1, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100)){
+  set.seed(1)
+  knnLoop <- knn(trainKNN, testKNN, trainKKNDirection, k = i)
+  confusionTable <- table(knnLoop, Direction0910)
+  cat("k =", i, "\n")
+  print(confusionTable)
+  
+  total = confusionTable[1,1] + confusionTable[1,2] + confusionTable[2,1] + confusionTable[2,2] 
+  correct = (confusionTable[1,1] + confusionTable[2,2]) / total
+  increaseCorrect = confusionTable[2,2] / (confusionTable[1,2] + confusionTable[2,2])
+  decreaseCorrect = confusionTable[1,1] / (confusionTable[1,1] + confusionTable[2,1])
+  
+  cat("\nProportion of correct predictions:", correct)
+  cat("\nProportion of correct predictions while market is increasing:", increaseCorrect)
+  cat("\nProportion of correct predictions while market is decreasing:", decreaseCorrect, "\n\n\n")
+}
+```
+
+#Chapter 8, Number 8
+
+##a)
+
+```{r}
+library(tree)
+train <- sample(1:nrow(Carseats), nrow(Carseats) / 2)
+trainCar <- Carseats[train, ]
+testCar <- Carseats[-train, ]
+```
+
+##b)
+
+```{r}
+carTree <- tree(Sales ~ ., data = trainCar)
+plot(carTree)
+text(carTree, pretty = 0)
+```
+
+```{r}
+yhat <- predict(carTree, newdata = testCar)
+cat('Tree Test MSE =', mean((yhat - testCar$Sales)^2))
+```
+
+##c)
+
+```{r}
+carCV <- cv.tree(carTree)
+minTree <- which.min(carCV$dev)
+cat("Cross validation suggests a tree of size", minTree)
+```
+
+```{r}
+carPrune <- prune.tree(carTree, best = minTree)
+plot(carPrune)
+text(carPrune, pretty = 0)
+```
+
+
+```{r}
+yhat <- predict(carPrune, newdata = testCar)
+cat('Pruned Tree Test MSE = ', mean((yhat - testCar$Sales)^2))
+```
+
+Note again that the above pruning is highly susceptible to variance in our random selection of the training/test split, but does in general raise MSE.
+
+##d)
+
+```{r}
+library(randomForest)
+carBag <- randomForest(Sales ~ ., data = trainCar, mtry = 10, ntree = 500, importance = TRUE)
+yhatBag <- predict(carBag, newdata = testCar)
+cat('Bagging Test MSE = ', mean((yhatBag - testCar$Sales)^2))
+```
+
+```{r}
+importance(carBag)
+```
+
+##e)
+
+
+```{r}
+for (i in 1:10){
+  carForest <- randomForest(Sales ~ ., data = trainCar, mtry = i, ntree = 500, importance = TRUE)
+  yhatForest <- predict(carForest, newdata = testCar)
+  MSE <- mean((yhatForest - testCar$Sales)^2)
+  
+  cat('Random Forest Test MSE for ', i, ' predictors =', MSE, '\n\n')
+  cat('Variable significance:\n\n')
+  print(importance(carForest))
+  cat('\n\n\n')
+}
+```
+
+As seen above, MSE tends to decrease as the number of variables considered at each split increases.
+
+
+
+#Chapter 8, Number 11
+
+##a)
+
+```{r}
+train <- 1:1000
+Caravan$Purchase <- ifelse(Caravan$Purchase == "Yes", 1, 0)
+trainCaravan <- Caravan[train, ]
+testCaravan <- Caravan[-train, ]
+```
+
+##b)
+
+```{r}
+library(gbm)
+caravanBoost <- gbm(Purchase ~ ., data = trainCaravan, distribution = "gaussian", n.trees = 1000, shrinkage = 0.01)
+head(summary(caravanBoost))
+```
+
+The variables "PPERSAUT" and "MKOOPKLA" stand out as being most significant
+
+##c)
+
+```{r}
+testProbabilities <- predict(caravanBoost, testCaravan, n.trees = 1000, type = "response")
+toCategory <- ifelse(testProbabilities > 0.2, 1, 0)
+caravanTable = table(testCaravan$Purchase, toCategory)
+caravanTable
+```
+
+```{r}
+cat('Fraction of the people predicted to make a purchase do in fact make one: ', caravanTable[2,2] / sum(caravanTable[,2]))
+```
+
+```{r}
+caravanLogistic <- glm(Purchase ~ ., data = trainCaravan, family = "binomial")
+testProbabilities2 <- predict(caravanLogistic, testCaravan, type = "response")
+toCategory2 <- ifelse(testProbabilities > 0.2, 1, 0)
+caravanLogTable = table(testCaravan$Purchase, toCategory2)
+caravanLogTable
+```
+
+```{r}
+cat('Fraction of the people predicted to make a purchase do in fact make one: ', caravanLogTable[2,2] / sum(caravanLogTable[,2]))
+```
+
+
+```{r}
+trainKNN <- as.matrix(trainCaravan)
+testKNN <- as.matrix(testCaravan)
+trainClass <- Caravan[1:1000, 'Purchase']
+knnPrediction <- knn(trainKNN, testKNN, trainClass, k = 1)
+knnTable <- table(testCaravan$Purchase,knnPrediction)
+knnTable
+```
+
+```{r}
+cat('Fraction of the people predicted to make a purchase do in fact make one: ', knnTable[2,2] / sum(knnTable[,2]))
+```
+
+While the boosting and logistic models match, KNN does a very poor job of prediction. Even moderatly raising the k value adds so much bias towards predicting a non-purchase that the model is rendered useless.
+
+
+#Problem 1
+
+```{r}
+BeautyData <- read.csv("BeautyData.csv")
+attach(BeautyData)
+plot(BeautyScore, CourseEvals)
+```
+
+To gain some intution for each of the variable's effect on course evaluation, I made a few plots seeting each of female, low, nonenglish, and tenuretrack to sero or one.
+
+```{r}
+femaleSlice1 = BeautyData[(female == 1),]
+lowerSlice1 = BeautyData[(lower == 1),]
+nonenglishSlice1 = BeautyData[(nonenglish == 1),]
+tenuretrackSlice1 = BeautyData[(tenuretrack == 1),]
+femaleSlice0 = BeautyData[(female == 0),]
+lowerSlice0 = BeautyData[(lower == 0),]
+nonenglishSlice0 = BeautyData[(nonenglish == 0),]
+tenuretrackSlice0 = BeautyData[(tenuretrack == 0),]
+
+plot(femaleSlice1$BeautyScore, femaleSlice1$CourseEvals)
+plot(lowerSlice1$BeautyScore, lowerSlice1$CourseEvals)
+plot(nonenglishSlice1$BeautyScore, nonenglishSlice1$CourseEvals)
+plot(tenuretrackSlice1$BeautyScore, tenuretrackSlice1$CourseEvals)
+plot(femaleSlice0$BeautyScore, femaleSlice0$CourseEvals)
+plot(lowerSlice0$BeautyScore, lowerSlice0$CourseEvals)
+plot(nonenglishSlice0$BeautyScore, nonenglishSlice0$CourseEvals)
+plot(tenuretrackSlice0$BeautyScore, tenuretrackSlice0$CourseEvals)
+```
+
+
+```{r}
+BeautyTrain = sample(1:dim(BeautyData)[1], dim(BeautyData)[1]/2)
+BeautyTest <- -BeautyTrain
+BeautyTrainData <- BeautyData[BeautyTrain, ]
+BeautyTestData <- BeautyData[BeautyTest, ]
+```
+
+```{r}
+BeautyTrainRegression = lm(CourseEvals ~ BeautyScore, data = BeautyTrainData)
+BeautyTestPredictions = predict(BeautyTrainRegression, BeautyTestData)
+print(summary(BeautyTrainRegression))
+cat("Least Squares Test MSE =", mean((BeautyTestPredictions - BeautyTestData$CourseEvals)^2))
+```
+
+```{r}
+BeautyData$female <- as.factor(BeautyData$female)
+BeautyData$lower <- as.factor(BeautyData$lower)
+BeautyData$nonenglish <- as.factor(BeautyData$nonenglish)
+BeautyData$tenuretrack <- as.factor(BeautyData$tenuretrack)
+
+BeautyTrainRegression = lm(CourseEvals ~ ., data = BeautyTrainData)
+BeautyTestPredictions = predict(BeautyTrainRegression, BeautyTestData)
+print(summary(BeautyTrainRegression))
+cat("Least Squares Test MSE =", mean((BeautyTestPredictions - BeautyTestData$CourseEvals)^2))
+```
+
+
+```{r}
+library(glmnet)
+trainMatrix <- model.matrix(CourseEvals ~ ., data = BeautyTrainData)
+testMatrix <- model.matrix(CourseEvals ~ ., data = BeautyTestData)
+
+lasso <- glmnet(trainMatrix, BeautyTrainData$CourseEvals, alpha = 1, lambda = grid, thresh = 1e-12)
+lassoCV <- cv.glmnet(trainMatrix, BeautyTrainData$CourseEvals, alpha = 1, lambda = grid, thresh = 1e-12)
+lassoLambdaMin <- lassoCV$lambda.min
+lassoTestPredictions <- predict(lasso, s = lassoLambdaMin, newx = testMatrix)
+cat("Lasso Test MSE = ", mean((lassoTestPredictions - BeautyTestData$CourseEvals)^2), "\n\n")
+predict(lasso, s = lassoLambdaMin, type = "coefficients")
+```
+
+```{r}
+BeautyTrainRegression = lm(CourseEvals ~ (.)^2, data = BeautyTrainData)
+BeautyTestPredictions = predict(BeautyTrainRegression, BeautyTestData)
+print(summary(BeautyTrainRegression))
+cat("Least Squares Test MSE =", mean((BeautyTestPredictions - BeautyTestData$CourseEvals)^2))
+```
+
+```{r}
+library(glmnet)
+trainMatrix <- model.matrix(CourseEvals ~ (.)^2, data = BeautyTrainData)
+testMatrix <- model.matrix(CourseEvals ~ (.)^2, data = BeautyTestData)
+
+lasso <- glmnet(trainMatrix, BeautyTrainData$CourseEvals, alpha = 1, lambda = grid, thresh = 1e-12)
+lassoCV <- cv.glmnet(trainMatrix, BeautyTrainData$CourseEvals, alpha = 1, lambda = grid, thresh = 1e-12)
+lassoLambdaMin <- lassoCV$lambda.min
+lassoTestPredictions <- predict(lasso, s = lassoLambdaMin, newx = testMatrix)
+cat("Lasso Test MSE = ", mean((lassoTestPredictions - BeautyTestData$CourseEvals)^2), "\n\n")
+predict(lasso, s = lassoLambdaMin, type = "coefficients")
+```
+
+It is difficult to even determine for this data what significance the variables have on course evalations, let alone say anything about the causation of such an effect. Using concepts we have discussed in class such as interaction terms and the LASSO method prove to be decidedly inconclusive.
+
+#Problem 2
+
+##1/2)
+
+Linear Regression and plotting of stratified histograms suggest a premium for both brick homes and homes in neighboorhood 3.
+
+```{r}
+MidCity <- read.csv("MidCity.csv")
+```
+
+```{r}
+MidCity$Nbhd <- as.factor(MidCity$Nbhd)
+priceModel <- lm(Price ~., data = MidCity)
+summary(priceModel)
+```
+
+```{r}
+library(ggplot2)
+
+ggplot(MidCity,aes(Price)) + 
+    geom_histogram(aes(fill=Brick),color='black',binwidth=5000) + theme_bw()
+
+ggplot(MidCity,aes(Price)) + 
+    geom_histogram(aes(fill=Nbhd),color='black',binwidth=5000) + theme_bw()
+```
+
+##3)
+
+Regression for an interaction term between brick and neighboorhood suggests that brick homes in neighboorhood three carry significantly more increase in value than elsewhere.
+
+```{r}
+MidCity$Nbhd <- as.factor(MidCity$Nbhd)
+priceModel <- lm(Price ~. + Nbhd*Brick, data = MidCity)
+summary(priceModel)
+```
+
+```{r}
+ggplot(subset(MidCity, Nbhd == 3),aes(Price)) + 
+    geom_histogram(aes(fill=Brick),color='black',binwidth=5000) + theme_bw()
+```
+
+##4)
+
+This is possible, and the coefficient for "NbhdAgeOld" suggests that there is not much of a difference (in terms of these variables) between neighborhood one and two.
+
+```{r}
+MidCity$NbhdAge <- ifelse(MidCity$Nbhd == 3, 'New', 'Old')
+
+NewOldModel <- lm(Price ~. - Nbhd, data = MidCity)
+summary(NewOldModel)
+```
+
+#Problem 3
+
+##1) 
+
+While there may be a significant correlation found between a regression of "Crime" and "Police", this does not account cor other causal factors that are correlated with either of these. In other words, there may be another variable, highly correlated with our predictor, that is actually causing the response variable.
+
+##2) 
+
+The researchers from UPenn were trying to determine if crime were simply determined by the avilible number of victims, measured by the addition of the additional variable of METRO ridership. Column one of the table indicates that the category of "High Alert" considered on its own is significant at the alpha = .05 level. 
+
+Column two of the table considers both the category of "High Alert" and the logarithim of "midday ridership" as predictors. While the riddership variable is significant at the higher alpha = .01 level, the alert category is still significant at the alpha = .05 level.
+
+##3) 
+
+Controlling for METRO ridership allows us to stratify our predicts based upon the number of people utilizing public transport, an indicator of how many people could potentially be victims of crime. The inital pypothesis was that fewer people would utilize public transport under a high alert, which showed that that this was actually incorrect. In Wheelan's words "They checked that hypothesis by looking at ridership levels on the Metro system, and they actually were not diminished on high-terror days, so they suggested the number of victims was largely unchanged." 
+
+Considering the results of the second column of table two, it appears that the presumed presence of more police under an increased alert did significantly reduce crime, even when controling for a measure of availible victims by including METRO ridership.
+
+##4) 
+
+This table further quantifies the effect of a high alert on the stratification of D.C's first district and all other areas. Here we see that controling for district by the interaction terms "High Alert x District 1" and "High Alert x Other Districts" that it appears that the effect of a high alert, while having a negative association in both cases, is only statistically significant for District 1 at the alpha = .01 level. Again note that midday ridership remains significant at the alpha = .01 level.
+
+#Problem 4
+
+```{r}
+CAhousing <- read.csv("CAhousing.csv")
+```
+
+```{r}
+library(BART)
+x = CAhousing[,1:8]
+y = log(CAhousing$medianHouseValue)
+
+set.seed(99) #MCMC, so set the seed
+nd=200 # number of kept draws
+burn=50 # number of burn in draws
+
+n=length(y) #total sample size
+set.seed(14) #
+ii = sample(1:n,floor(.75*n)) # indices for train data, 75% of data
+xtrain=x[ii,]; ytrain=y[ii] # training data
+xtest=x[-ii,]; ytest=y[-ii] # test data
+cat("train sample size is ",length(ytrain)," and test sample size is ",length(ytest),"\n")
+
+set.seed(99)
+bf_train = wbart(xtrain,ytrain)
+yhat = predict(bf_train,as.matrix(xtest))
+
+yhat.mean = apply(yhat,2,mean)
+
+
+
+plot(ytest,yhat.mean)
+abline(0,1,col=2)
+
+```
+
+```{r}
+comparisonBART <- data.frame(cbind(ytest, yhat.mean))
+cat('BART RMSE = ', sqrt(mean((comparisonBART$ytest - comparisonBART$yhat.mean)**2)))
+```
+
+It appears that the BART solution has a slightly higher RMSE than the random forest or boosting method provided in the notes.
+
+#Problem 5
+
+```{r}
+library(MASS)
+netData <- Boston
+netData$chas <- as.numeric(netData$chas)
+
+netTrain = sample(1:dim(netData)[1], dim(netData)[1]*.75)
+netTest <- -netTrain
+netTrainData <- netData[netTrain, ]
+netTestData <- netData[-netTest, ]
+
+maxs <- as.numeric(apply(netData, 2, max))
+mins <- as.numeric(apply(netData, 2, min))
+
+netScale <- scale(netData, center = mins, scale = maxs - mins)
+
+scaledTrain <- netScale[netTrain,]
+scaledTest <- as.data.frame(netScale[-netTest,])
+
+f <- as.formula(medv ~ crim + zn + indus + chas + nox + rm + age + dis + rad + tax + ptratio + black + lstat)
+
+```
+
+##Single Layer Net
+```{r}
+#import function from Github so we can view a graph
+library(devtools)
+source_url('https://gist.githubusercontent.com/fawda123/7471137/raw/466c1474d0a505ff044412703516c34f1a4684a5/nnet_plot_update.r')
+
+```
+
+```{r}
+library(nnet)
+library(reshape)
+
+#arbitrary size selection, we'll cross validate to select properly
+oneLayerNet <- nnet(formula = f, data = scaledTrain, size = 5)
+plot.nnet(oneLayerNet, alpha.val = 0.5, circle.col = list('lightgray', 'white'))
+```
+
+Cross validation seems to suggest approximately seven hidden units and a weight decay of .005
+
+```{r}
+library(caret)
+
+cvCtrl <- trainControl(method="repeatedcv", repeats=3)
+
+nnetGrid <- expand.grid(.decay = c(.0025, .005, .01, .02, .04, .06), .size = c(1, 3, 5, 7, 9))
+
+modFit_1 <- train(f, method="nnet", trControl=cvCtrl, data=scaledTrain, trace=FALSE, maxit=1000, linout = 1, tuneGrid = nnetGrid, verbose = FALSE)
+```
+
+```{r}
+plot(modFit_1)
+```
+
+##Multiple Layer Net (just for fun!)
+
+```{r}
+library(neuralnet)
+nn <- neuralnet(f,data=scaledTrain,hidden=c(5, 5),linear.output=T)
+```
+
+```{r}
+plot(nn)
+```
+
+```{r}
+#linear for comparison
+BostonLinear <- glm(medv~., data=netTrainData)
+BostonLinearPredict <- predict(BostonLinear,netTrainData)
+LinearMSE <- sum((BostonLinearPredict - netTestData$medv)^2)/nrow(netTestData)
+
+nnPredict <- compute(nn,scaledTest[,1:13])
+nnPredictScaled <- nnPredict$net.result*(max(netData$medv)-min(netData$medv))+min(netData$medv)
+testNNr <- (scaledTest$medv)*(max(netData$medv)-min(netData$medv))+min(netData$medv)
+nnMSE <- sum((testNNr - nnPredictScaled)^2)/nrow(scaledTest)
+
+print(paste(LinearMSE,nnMSE))
+```
+
+
+```{r}
+df <- data.frame('Layer1'=integer(), 'Layer2' = integer(), 'NetMSE' = numeric())
+
+for (x in 1:5){
+  for (y in 1:5){
+    nn <- neuralnet(f,data=scaledTrain,hidden=c(x, y),linear.output=T)
+  
+    nnPredict <- compute(nn,scaledTest[,1:13])
+    nnPredictScaled <- nnPredict$net.result*(max(netData$medv)-min(netData$medv))+min(netData$medv)
+    testNNr <- (scaledTest$medv)*(max(netData$medv)-min(netData$medv))+min(netData$medv)
+    nnMSE <- sum((testNNr - nnPredictScaled)^2)/nrow(scaledTest)
+    
+    df[nrow(df) + 1,] = list(x, y, nnMSE)
+    
+    #print(nnMSE)
+  }
+}
+
+print(df[which.min(df$NetMSE),])
+```
+
+
+#Problem 6
+
+My main contribution to our group project was the creation of a LASSO model and several corresponding confusion matrices. After an initial logistic regression by one of my group members, I created a LASSO medel, cross validated across a range of lanbda values. This LASSO regression resulted in a model that had a similiar overall accuracy, but made significant improvements to the proportion of false negative and false positive results. 
+
+We also used this LASSO as an indicator of what factors were most significant in our regression. I then used this to create a second logisitic model, but did not suceed in producing better results than the LASSO I created. 
+
+Finally, I also calulated the accuracy and confusion matrix for a random forest model that one of my team members created.
+
+Outside of our code, I drafted the slides and portion of the report correspondiong to the particuliar analysis I had done for the project.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
